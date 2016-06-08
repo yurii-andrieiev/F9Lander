@@ -29,7 +29,7 @@ class Options(object):
     def __init__(self, mode, ip, port, display):
         self.pixels_per_meter = 10
         self.screen_width = 1024
-        self.screen_height = 768
+        self.screen_height = 700
         self.target_fps = 90   # 60
         # SOCKET, PIPE OR KEYBOARD PARAMETER HERE
         # socket address ('127.0.0.1', 50007)
