@@ -45,22 +45,12 @@ class VerticalLandingEnvironment(Environment):
 class DefaultController(ActionValueInterface):
     def getMaxAction(self, state):
         agent_state, platform_state, system_state = state
-        if agent_state["vy"] <= -7.0:
-            e1 = 1
-            e2 = 1
-            e3 = 1
-        else:
-            e1 = 0
-            e2 = 0
-            e3 = 0
-        if agent_state["angle"] < 0.0:
-            e2 = 1
-        else:
-            e2 = 0
-        if agent_state["angle"] > 0.0:
-            e3 = 1
-        else:
-            e3 = 0
+        angle = agent_state["angle"]
+
+        left = 1 if angle < 0 else 0
+        right = 1 if angle > 0 else 0
+        up = 1 if agent_state["vy"] <= -7.0 else 0
+
         # system_state["flight_status"] | "none", "landed", "destroyed"
         # "none" means that we don't know, whether we landed or destroyed
         if system_state["flight_status"] == "destroyed" or (agent_state["fuel"] <= 0.0 and agent_state["dist"] >= 70.0):
@@ -68,7 +58,7 @@ class DefaultController(ActionValueInterface):
         else:
             new = 0
         # keys map [up, left, right, new]
-        return [e1, e2, e3, new]
+        return up, left, right, new
 
     def getActionValues(self, state):
         return actions
