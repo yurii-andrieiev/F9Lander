@@ -1,7 +1,9 @@
 import socket
+
+from pybrain.rl.learners.valuebased.interface import ActionValueInterface
+from pybrain.rl.environments import Environment
 from scipy import *
 
-from pybrain.rl.environments import Environment
 
 RESET_CMD = str([0, 0, 0, 1])
 DEFAULT_IP = '127.0.0.1'
@@ -30,10 +32,7 @@ class VerticalLandingEnvironment(Environment):
         self.socket.send(RESET_CMD)
 
     def performAction(self, action):
-        if action in actions:
-            self.socket.send(str(action))
-        else:
-            raise ValueError
+        self.socket.send(str(action))
 
     def getSensors(self):
         states = eval(self.socket.recv(1024))
@@ -42,14 +41,49 @@ class VerticalLandingEnvironment(Environment):
         states = {state['type']: state for state in states}
         return states['actor'], states['decoration'], states['system']
 
+
+class DefaultController(ActionValueInterface):
+    def getMaxAction(self, state):
+        agent_state, platform_state, system_state = state
+        if agent_state["vy"] <= -7.0:
+            e1 = 1
+            e2 = 1
+            e3 = 1
+        else:
+            e1 = 0
+            e2 = 0
+            e3 = 0
+        if agent_state["angle"] < 0.0:
+            e2 = 1
+        else:
+            e2 = 0
+        if agent_state["angle"] > 0.0:
+            e3 = 1
+        else:
+            e3 = 0
+        # system_state["flight_status"] | "none", "landed", "destroyed"
+        # "none" means that we don't know, whether we landed or destroyed
+        if system_state["flight_status"] == "destroyed" or (agent_state["fuel"] <= 0.0 and agent_state["dist"] >= 70.0):
+            new = 1
+        else:
+            new = 0
+        # keys map [up, left, right, new]
+        return [e1, e2, e3, new]
+
+    def getActionValues(self, state):
+        return actions
+
+
 environment = VerticalLandingEnvironment()
-sock = environment.socket
+controller = DefaultController()
 
 while True:
-
     sensors = environment.getSensors()
     if not sensors:
         break
+    action = controller.getMaxAction(sensors)
+    environment.performAction(action)
+
     agent_state, platform_state, system_state = sensors
     print agent_state, platform_state, system_state
     print "{" + str(agent_state) + "," + str(platform_state) + "," + str(system_state) + "}" + ","
@@ -102,41 +136,6 @@ while True:
     #                       rocket status but not whole system.
     #
     # 'score' - synthetic score, you can use it or write your own
-    #
-    # random move
-    # rnd = np.random.random_sample()
-    # if rnd >= 0.7:
-    #    rnd = 1
-    # else:
-    #    rnd = 0
-    #
-    # if-then-else logic
-    if agent_state["vy"] <= -7.0:
-        e1 = 1
-        e2 = 1
-        e3 = 1
-    else:
-        e1 = 0
-        e2 = 0
-        e3 = 0
-    if agent_state["angle"] < 0.0:
-        e2 = 1
-    else:
-        e2 = 0
-    if agent_state["angle"] > 0.0:
-        e3 = 1
-    else:
-        e3 = 0
-    # system_state["flight_status"] | "none", "landed", "destroyed"
-    # "none" means that we don't know, whether we landed or destroyed
-    if system_state["flight_status"] == "destroyed" or (agent_state["fuel"] <= 0.0 and agent_state["dist"] >= 70.0):
-        new = 1
-    else:
-        new = 0
-    # keys map [up, left, right, new]
-    # sending command to server
-    sock.send(str([e1, e2, e3, new]))
-    # time.sleep(3)
 
-sock.close()
+environment.socket.close()
 print "Socket closed"
