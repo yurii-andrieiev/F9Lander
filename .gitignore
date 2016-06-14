@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
+pybrain
+
 # Test files
 
 # Distribution / packaging
